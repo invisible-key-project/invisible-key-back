@@ -15,7 +15,10 @@ class ImageProcessView(APIView):
                     destination.write(chunk)
 
             # 워터마크 추출
-            buffer = extract_watermark(save_path)
+            buffer, decoded_data = extract_watermark(save_path)
+
+            user_id = decoded_data[:8]
+            date = decoded_data[8:]
 
             # Base64 인코딩 문자열로 변환
             watermark_base64 = base64.b64encode(buffer).decode()
@@ -23,7 +26,9 @@ class ImageProcessView(APIView):
             # Base64 문자열을 응답으로 전송
             return Response({
                 'message': 'Image processed',
-                'watermark': watermark_base64
+                'watermark': watermark_base64,
+                'userId' : user_id,
+                'date' : date,
             })
         else:
             return Response({'error': 'No image file provided'}, status=400)

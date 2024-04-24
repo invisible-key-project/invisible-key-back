@@ -1,7 +1,14 @@
+import os
+
 from PIL import Image
 import numpy as np
 import pywt
 import cv2
+import sys
+sys.path.append("/opt/homebrew/opt/zbar/lib/python3.11/site-packages")
+from pyzbar.pyzbar import decode
+
+
 
 def extract_watermark(image_path):
     watermarked_image = cv2.imread(image_path)
@@ -27,8 +34,8 @@ def extract_watermark(image_path):
                 dct_block = cv2.dct(block)
 
                 # 워터마킹 추출 과정
-                C_f = dct_block[3, 3]
-                C_r = dct_block[3, 4]
+                C_f = dct_block[2, 2]
+                C_r = dct_block[2, 3]
 
                 if (C_f > C_r):
                     watermark.append(1)
@@ -42,7 +49,19 @@ def extract_watermark(image_path):
     # 결과 표시
     extracted_watermark = np.array(watermark, dtype=np.uint8) * 255  # 이진값을 0 또는 255로 변환
     extract_watermark = extracted_watermark.reshape((64, 64))
-
     _, buffer = cv2.imencode('.jpg', extract_watermark)
 
-    return buffer
+    #QRCode 인식하기
+    decoded = decode(extract_watermark)
+
+    if decoded:
+        # 링크 가져와서 브라우저 실행하기
+        decoded_data = decoded[0].data.decode('utf-8')
+        print("=========== 인식 성공 ===========")
+        print("데이터: ", decoded_data)
+
+    else:
+        print("QR 코드를 찾을 수 없습니다.")
+        decoded_data = "QR 코드를 찾을 수 없습니다."
+
+    return buffer, decoded_data
