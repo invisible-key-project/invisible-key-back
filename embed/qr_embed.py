@@ -1,5 +1,3 @@
-import views
-
 # QRCode 삽입하기
 import qrcode
 from PIL import Image
@@ -43,4 +41,4 @@ def generate_qr(data):
 """
 Embed qr img to custom img
 """
-def embed_qr_img(img, qr):
+# def embed_qr_img(img, qr):

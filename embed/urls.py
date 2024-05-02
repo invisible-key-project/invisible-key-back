@@ -4,5 +4,5 @@ from . import views
 app_name = 'embed'
 
 urlpatterns = [
-    path('embed/receive_qrdata/', views.receive_qrdata, name='receive_qrdata'),
+    path('embed/qrdata/', views.receive_and_process_qrdata, name='qrdata'),
 ]
