@@ -40,9 +40,12 @@ def generate_qr(data):
 
 
 """
-Embed qr img to custom img
+Embed watermark img to custom img
 """
 def apply_watermark(original_image, watermark_image):
+    # PIL 이미지를 numpy 배열로 변환
+    original_image = np.array(original_image)
+    watermark_image = np.array(watermark_image)
     def embed_watermark(block, watermark, index):
         GV = 2
         watermark_index = index
@@ -136,8 +139,9 @@ def apply_watermark(original_image, watermark_image):
 
     # 이미지를 저장하거나 표시
     # cv2.imwrite('processed_image.jpg', reconstructed_image)
+    encoded_image = cv2.imencode('.png', reconstructed_image)
 
-    return reconstructed_image  # 처리된 이미지의 경로 또는 이름 반환
+    return encoded_image  # 처리된 이미지의 경로 또는 이름 반환
 
 
 # 함수 사용 예
