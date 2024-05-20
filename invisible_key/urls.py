@@ -16,9 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-
+from django.urls import path, include
 from watermark.views import ImageProcessView
 
 urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('embed/', include('embed.urls')),
     path('upload/image/', ImageProcessView.as_view(), name='image-upload'),
 ]
