@@ -43,24 +43,35 @@ def generate_qr(data):
 Embed watermark img to custom img
 """
 def apply_watermark(original_image, watermark_image):
+
     # PIL 이미지를 numpy 배열로 변환
     original_image = np.array(original_image)
     watermark_image = np.array(watermark_image)
+
+    # 워터마크 이미지의 크기를 확인하고 조건에 따라 리사이징
+    if watermark_image.shape[0] != 64 or watermark_image.shape[1] != 64:
+        # 워터마크 이미지가 64x64 픽셀이 아닐 경우 리사이징
+        watermark_image = cv2.resize(watermark_image, (64, 64), interpolation=cv2.INTER_AREA)
+        # print("Watermark 이미지를 64x64 픽셀로 리사이징함.")
+    # else:
+    #     # 이미 64x64 픽셀인 경우 원본 사용
+    #     print("Watermark 이미지가 이미 64x64 픽셀입니다.")
+
     def embed_watermark(block, watermark, index):
         GV = 2
         watermark_index = index
 
-        C_f = block[3, 3]
-        C_r = block[3, 4]
+        C_f = block[2, 2]
+        C_r = block[2, 3]
         M = (C_f + C_r) / 2
         D = np.abs(C_f - C_r)
         array = [GV + D, 20]
-        if (index == 249):
-            print("index: ", index)
-            print("삽입된 워터마크: ", watermark[watermark_index])
-            print("조정 전")
-            print("C_f: ", C_f)
-            print("C_r: ", C_r)
+        # if (index == 249):
+        #     print("index: ", index)
+        #     print("삽입된 워터마크: ", watermark[watermark_index])
+        #     print("조정 전")
+        #     print("C_f: ", C_f)
+        #     print("C_r: ", C_r)
 
         if watermark[watermark_index] == 255:
             C_f = M + np.min(array)
@@ -69,13 +80,13 @@ def apply_watermark(original_image, watermark_image):
             C_f = M - np.min(array)
             C_r = M + np.min(array)
 
-        block[3, 3] = C_f
-        block[3, 4] = C_r
-        if (index == 249):
-            print("조정 ")
-            print("C_f: ", C_f)
-            print("C_r: ", C_r)
-            print()
+        block[2, 2] = C_f
+        block[2, 3] = C_r
+        # if (index == 249):
+        #     print("조정 ")
+        #     print("C_f: ", C_f)
+        #     print("C_r: ", C_r)
+        #     print()
 
         return block
 
@@ -103,7 +114,7 @@ def apply_watermark(original_image, watermark_image):
 
     # 이미지를 block_size x block_size 블록으로 나누고, 각 블록에 대해 DCT 적용
     index = 0
-    print("watermark.size: ", watermark.size)
+    # print("watermark.size: ", watermark.size)
     for i in range(0, HL.shape[0], block_size):
         for j in range(0, HL.shape[1], block_size):
             if index > watermark.size - 1: break;
