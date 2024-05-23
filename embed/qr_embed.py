@@ -45,8 +45,12 @@ Embed watermark img to custom img
 def apply_watermark(original_image, watermark_image):
 
     # PIL 이미지를 numpy 배열로 변환
-    original_image = np.array(original_image)
-    watermark_image = np.array(watermark_image)
+    original_image = np.array(original_image.convert('RGB'))
+    watermark_image = np.array(watermark_image.convert('RGB'))
+
+    # BGR로 변환 (OpenCV는 BGR 형식을 사용)
+    original_image = cv2.cvtColor(original_image, cv2.COLOR_RGB2BGR)
+    watermark_image = cv2.cvtColor(watermark_image, cv2.COLOR_RGB2BGR)
 
     # 워터마크 이미지의 크기를 확인하고 조건에 따라 리사이징
     if watermark_image.shape[0] != 64 or watermark_image.shape[1] != 64:
