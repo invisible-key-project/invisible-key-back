@@ -42,40 +42,17 @@ def generate_qr(data):
 """
 Embed watermark img to custom img
 """
+
 def apply_watermark(original_image, watermark_image):
-
-    # PIL 이미지를 numpy 배열로 변환
-    original_image = np.array(original_image.convert('RGB'))
-    watermark_image = np.array(watermark_image.convert('RGB'))
-
-    # BGR로 변환 (OpenCV는 BGR 형식을 사용)
-    original_image = cv2.cvtColor(original_image, cv2.COLOR_RGB2BGR)
-    watermark_image = cv2.cvtColor(watermark_image, cv2.COLOR_RGB2BGR)
-
-    # 워터마크 이미지의 크기를 확인하고 조건에 따라 리사이징
-    if watermark_image.shape[0] != 64 or watermark_image.shape[1] != 64:
-        # 워터마크 이미지가 64x64 픽셀이 아닐 경우 리사이징
-        watermark_image = cv2.resize(watermark_image, (64, 64), interpolation=cv2.INTER_AREA)
-        # print("Watermark 이미지를 64x64 픽셀로 리사이징함.")
-    # else:
-    #     # 이미 64x64 픽셀인 경우 원본 사용
-    #     print("Watermark 이미지가 이미 64x64 픽셀입니다.")
-
     def embed_watermark(block, watermark, index):
-        GV = 2
+        GV = 30
         watermark_index = index
 
-        C_f = block[2, 2]
-        C_r = block[2, 3]
+        C_f = block[1, 0]
+        C_r = block[0, 1]
         M = (C_f + C_r) / 2
         D = np.abs(C_f - C_r)
-        array = [GV + D, 20]
-        # if (index == 249):
-        #     print("index: ", index)
-        #     print("삽입된 워터마크: ", watermark[watermark_index])
-        #     print("조정 전")
-        #     print("C_f: ", C_f)
-        #     print("C_r: ", C_r)
+        array = [GV + D, 50]
 
         if watermark[watermark_index] == 255:
             C_f = M + np.min(array)
@@ -84,24 +61,27 @@ def apply_watermark(original_image, watermark_image):
             C_f = M - np.min(array)
             C_r = M + np.min(array)
 
-        block[2, 2] = C_f
-        block[2, 3] = C_r
-        # if (index == 249):
-        #     print("조정 ")
-        #     print("C_f: ", C_f)
-        #     print("C_r: ", C_r)
-        #     print()
+        block[1, 0] = C_f
+        block[0, 1] = C_r
 
         return block
 
+    # PIL 이미지를 numpy 배열로 변환하고 RGB에서 BGR로 변환
+    original_image = cv2.cvtColor(np.array(original_image), cv2.COLOR_RGB2BGR)
+    watermark_image = cv2.cvtColor(np.array(watermark_image), cv2.COLOR_RGB2BGR)
+
+    if watermark_image.shape[0] != 64 or watermark_image.shape[1] != 64:
+        # 워터마크 이미지가 64x64 픽셀이 아닐 경우 리사이징
+        watermark_image = cv2.resize(watermark_image, (64, 64), interpolation=cv2.INTER_AREA)
+
     # 이미지를 읽고 그레이스케일로 변환
-    original_image = original_image
+    #original_image = original_image
 
     yuv_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2YUV)
     y_channel, u_channel, v_channel = cv2.split(yuv_image)
 
-    # 워터마크 이미지 불러오기 (이진화된 이미지)
-    watermark = watermark_image
+    # 워터마크 이미지 불러오기 (그레이스케일)
+    watermark = cv2.cvtColor(watermark_image, cv2.COLOR_BGR2GRAY)
 
     # 이진화된 이미지를 배열로 변환
     watermark = np.array(watermark)
@@ -159,6 +139,3 @@ def apply_watermark(original_image, watermark_image):
     else:
         return False, None
 
-# 함수 사용 예
-# processed_image_path = apply_watermark('original_photo.jpeg', 'watermark_image.png')
-# print(f"Processed image saved to {processed_image_path}")
