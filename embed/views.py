@@ -38,10 +38,10 @@ def receive_original_image(request):
     if bg_img and wm_img:
         # 배경 이미지 처리
         bg_img_data = bg_img.read()
-        bg_img_obj = Image.open(BytesIO(bg_img_data)).convert('RGB')
+        bg_img_obj = Image.open(BytesIO(bg_img_data))
         # 워터마크 이미지 처리
         wm_img_data = wm_img.read()
-        wm_img_obj = Image.open(BytesIO(wm_img_data)).convert('RGB')
+        wm_img_obj = Image.open(BytesIO(wm_img_data))
 
         # 워터마크 적용
         success, watermarked_image_bytes = apply_watermark(bg_img_obj, wm_img_obj)
