@@ -1,6 +1,3 @@
-import os
-
-from PIL import Image
 import numpy as np
 import pywt
 import cv2
@@ -34,8 +31,8 @@ def extract_watermark(image_path):
                 dct_block = cv2.dct(block)
 
                 # 워터마킹 추출 과정
-                C_f = dct_block[2, 2]
-                C_r = dct_block[2, 3]
+                C_f = dct_block[1, 0]
+                C_r = dct_block[0, 1]
 
                 if (C_f > C_r):
                     watermark.append(1)
