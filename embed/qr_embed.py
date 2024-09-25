@@ -4,6 +4,7 @@ from PIL import Image
 import numpy as np
 import cv2
 import pywt
+import random
 
 """
 Generate qr code img
@@ -44,93 +45,121 @@ Embed watermark img to custom img
 """
 
 def apply_watermark(original_image, watermark_image):
+    def adjust_image_size(image):
+        """이미지의 가로 또는 세로 크기가 홀수일 경우 1픽셀을 빼서 짝수로 만듦"""
+        height, width = image.shape[:2]
+        if height % 2 != 0:
+            height -= 1
+        if width % 2 != 0:
+            width -= 1
+        return cv2.resize(image, (width, height))
+
     def embed_watermark(block, watermark, index):
-        GV = 30
+        GV = 80
         watermark_index = index
 
-        C_f = block[1, 0]
-        C_r = block[0, 1]
+        C_f = block[0, 1]
+        C_r = block[1, 0]
         M = (C_f + C_r) / 2
         D = np.abs(C_f - C_r)
         array = [GV + D, 50]
 
-        if watermark[watermark_index] == 255:
+        if watermark[watermark_index] > 128:
             C_f = M + np.min(array)
             C_r = M - np.min(array)
         else:
             C_f = M - np.min(array)
             C_r = M + np.min(array)
 
-        block[1, 0] = C_f
-        block[0, 1] = C_r
+        block[0, 1] = C_f
+        block[1, 0] = C_r
 
         return block
 
-    # PIL 이미지를 numpy 배열로 변환하고 RGB에서 BGR로 변환
-    original_image = cv2.cvtColor(np.array(original_image), cv2.COLOR_RGB2BGR)
-    watermark_image = cv2.cvtColor(np.array(watermark_image), cv2.COLOR_RGB2BGR)
+    # 이미지 읽기 및 YCbCr로 변환
+    original_image = cv2.imread('white_image.jpg')
+    # 이미지 크기 조정 (홀수일 경우 1픽셀 제거)
+    original_image = adjust_image_size(original_image)
+    ycbcr_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2YCrCb)
+    y_channel, cb_channel, cr_channel = cv2.split(ycbcr_image)
 
-    if watermark_image.shape[0] != 64 or watermark_image.shape[1] != 64:
-        # 워터마크 이미지가 64x64 픽셀이 아닐 경우 리사이징
-        watermark_image = cv2.resize(watermark_image, (64, 64), interpolation=cv2.INTER_AREA)
+    # Y채널에 DWT 적용
+    coeffs2 = pywt.dwt2(y_channel, 'haar')  # DWT 수행
+    LL, (LH, HL, HH) = coeffs2  # LH 대역 추출
 
-    # 이미지를 읽고 그레이스케일로 변환
-    #original_image = original_image
-
-    yuv_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2YUV)
-    y_channel, u_channel, v_channel = cv2.split(yuv_image)
-
-    # 워터마크 이미지 불러오기 (그레이스케일)
-    watermark = cv2.cvtColor(watermark_image, cv2.COLOR_BGR2GRAY)
-
-    # 이진화된 이미지를 배열로 변환
-    watermark = np.array(watermark)
-    # 이미지 이진화
+    # 워터마크 이미지 불러오기
+    watermark = cv2.imread("Qr_64.png", cv2.IMREAD_GRAYSCALE)
     _, watermark = cv2.threshold(watermark, 128, 255, cv2.THRESH_BINARY)
     watermark = watermark.reshape(-1)
-    # cv2.imshow("watermark", watermark)
 
-    coeffs = pywt.dwt2(y_channel, 'haar')
-    LL, (LH, HL, HH) = coeffs
-
-    # 2차원 DCT를 적용할 블록의 크기를 정의 (예: 8x8)
     block_size = 8
-
-    # 이미지를 block_size x block_size 블록으로 나누고, 각 블록에 대해 DCT 적용
     index = 0
-    # print("watermark.size: ", watermark.size)
-    for i in range(0, HL.shape[0], block_size):
-        for j in range(0, HL.shape[1], block_size):
-            if index > watermark.size - 1: break;
+    IDW = []
 
-            block = HL[i:i + block_size, j:j + block_size].astype(np.float32)
+    # IDW 배열 생성 - Y채널과 Cb채널을 비교
+    for i in range(0, y_channel.shape[0], block_size):
+        for j in range(0, y_channel.shape[1], block_size):
+            if index >= watermark.size:
+                break
 
-            # 실제 블록 크기 확인
-            actual_block_size = block.shape
-            if actual_block_size == (block_size, block_size):
-                # 2차원 DCT 적용
-                dct_block = cv2.dct(block)
+            y_block = y_channel[i:i + block_size, j:j + block_size].astype(np.float32)
+            cb_block = cb_channel[i:i + block_size, j:j + block_size].astype(np.float32)
 
-                # 워터마킹 과정
-                dct_block = embed_watermark(dct_block, watermark, index)
+            if y_block.shape == (block_size, block_size) and cb_block.shape == (block_size, block_size):
+                dct_y_block = cv2.dct(y_block)
+                dct_cb_block = cv2.dct(cb_block)
 
-                # 2차원 IDCT로 원래 공간으로 되돌림
-                idct_block = cv2.idct(dct_block)
-                HL[i:i + block_size, j:j + block_size] = idct_block
-            else:
-                # 크기가 (8, 8)이 아닌 블록은 변환 없이 그대로 유지
-                continue
+                B_y = dct_y_block[0, 0]
+                B_cb = dct_cb_block[0, 0]
 
+                # IDW는 Y채널과 Cb채널의 DC 계수를 비교하여 0 또는 1 생성
+                if B_y > B_cb:
+                    IDW.append(1)
+                else:
+                    IDW.append(0)
+                index += 1
+
+    # IDW 배열이 워터마크 크기와 맞는지 확인하고 XOR 연산 수행
+    IDW = np.array(IDW[:watermark.size])
+    KEY = np.bitwise_xor(IDW, watermark)
+
+    # 128을 기준으로 255 또는 1로 변환
+    KEY = np.array([255 if value >= 128 else 0 for value in KEY])
+
+    # 랜덤 블록 선택을 위한 난수 생성기 초기화
+    random_seed = 42
+    random.seed(random_seed)
+
+    # LH 대역의 블록 위치 리스트 생성 및 셔플
+    block_positions = [(i, j) for i in range(0, LH.shape[0], block_size) for j in range(0, LH.shape[1], block_size)]
+    random.shuffle(block_positions)
+
+    # LH 대역에서 KEY 삽입
+    index = 0
+    for pos in block_positions:
+        if index >= KEY.size:
+            break
+
+        i, j = pos
+        lh_block = LH[i:i + block_size, j:j + block_size].astype(np.float32)
+
+        if lh_block.shape == (block_size, block_size):
+            dct_lh_block = cv2.dct(lh_block)
+
+            # KEY 삽입 (0,0) 위치에 삽입
+            dct_lh_block = embed_watermark(dct_lh_block, KEY, index)
+            LH[i:i + block_size, j:j + block_size] = cv2.idct(dct_lh_block)
             index += 1
 
-    reconstructed_y_channel = pywt.idwt2((LL, (LH, HL, HH)), 'haar')
-    # 결과 이미지를 uint8 타입으로 변환 및 범위 조정
-    reconstructed_y_channel = np.clip(reconstructed_y_channel, 0, 255).astype(np.uint8)
-    reconstructed_y_channel_resized = cv2.resize(reconstructed_y_channel, (u_channel.shape[1], u_channel.shape[0]))
+    # IDWT(역 DWT)로 Y채널 복원
+    coeffs2_modified = (LL, (LH, HL, HH))  # 수정된 LH 대역 사용
+    y_channel_modified = pywt.idwt2(coeffs2_modified, 'haar')
+    y_channel_modified = np.clip(y_channel_modified, 0, 255)
+    y_channel_modified = y_channel_modified.astype(np.uint8)  # uint8로 변환
 
-    # YUV 채널 재결합 및 RGB로 변환
-    reconstructed_image = cv2.merge([reconstructed_y_channel_resized, u_channel, v_channel])
-    reconstructed_image = cv2.cvtColor(reconstructed_image, cv2.COLOR_YUV2BGR)
+    # YCbCr 채널 결합 후 최종 이미지 복원
+    modified_ycbcr_image = cv2.merge([y_channel_modified, cb_channel, cr_channel])
+    reconstructed_image = cv2.cvtColor(modified_ycbcr_image, cv2.COLOR_YCrCb2BGR)
 
     # 이미지를 인코딩하여 반환
     success, encoded_image = cv2.imencode('.png', reconstructed_image)
