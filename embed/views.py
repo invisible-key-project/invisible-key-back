@@ -8,7 +8,7 @@ from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from .qr_embed import generate_qr
-from .qr_embed import apply_watermark
+from .watermark_embed import apply_watermark
 
 
 @csrf_exempt

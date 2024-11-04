@@ -17,6 +17,12 @@ class ImageProcessView(APIView):
             # 워터마크 추출
             buffer, decoded_data = extract_watermark(save_path)
 
+            if decoded_data == "QR 코드를 찾을 수 없습니다.":
+                # QR 코드 추출 실패 시 400 상태 코드와 함께 응답
+                return Response({
+                    'error': 'QR 코드를 추출할 수 없습니다. 이미지가 손상되었거나 워터마크가 삽입되지 않은 이미지입니다.'
+                }, status=400)
+
             user_id = decoded_data[:8]
             date = decoded_data[8:]
 
